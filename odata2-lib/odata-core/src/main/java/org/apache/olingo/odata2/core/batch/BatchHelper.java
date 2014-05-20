@@ -31,7 +31,7 @@ public class BatchHelper {
 
   public static final String HTTP_CONTENT_TRANSFER_ENCODING = "Content-Transfer-Encoding";
 
-  public static final String HTTP_CONTENT_ID = "Content-Id";
+  public static final String HTTP_CONTENT_ID = "Content-ID";
 
   public static final String MIME_HEADER_CONTENT_ID = "MimeHeader-ContentId";
 

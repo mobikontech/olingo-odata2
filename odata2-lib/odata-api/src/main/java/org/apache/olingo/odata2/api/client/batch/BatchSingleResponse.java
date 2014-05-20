@@ -38,7 +38,7 @@ public interface BatchSingleResponse {
   public String getStatusInfo();
 
   /**
-   * @return a value of the Content-Id header
+   * @return a value of the Content-ID header
    */
   public String getContentId();
 

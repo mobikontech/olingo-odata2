@@ -155,7 +155,7 @@ public class ClientBatchTest extends AbstractRefTest {
     batch.add(changeSet);
 
     Map<String, String> getRequestHeaders = new HashMap<String, String>();
-    getRequestHeaders.put("content-id", "3");
+    getRequestHeaders.put("Content-ID", "3");
     BatchPart request = BatchQueryPart.method(GET)
         .uri("Employees('7')/EmployeeName")
         .contentId("3")

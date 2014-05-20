@@ -140,9 +140,9 @@ public class BatchResponseWriterTest {
 
     String mimeHeader = "Content-Type: application/http" + "\r\n"
         + "Content-Transfer-Encoding: binary" + "\r\n"
-        + "Content-Id: mimeHeaderContentId123" + "\r\n";
+        + "Content-ID: mimeHeaderContentId123" + "\r\n";
 
-    String requestHeader = "Content-Id: requestHeaderContentId123" + "\r\n"
+    String requestHeader = "Content-ID: requestHeaderContentId123" + "\r\n"
         + "Content-Type: application/json" + "\r\n"
         + "Content-Length: 13" + "\r\n";
 

@@ -559,14 +559,14 @@ public class BatchRequestParserTest {
         + LF
         + "GET Employees HTTP/1.1" + LF
         + "accept: */*,application/atom+xml,application/atomsvc+xml,application/xml" + LF
-        + "Content-Id: BBB" + LF
+        + "Content-ID: BBB" + LF
         + LF + LF
         + "--batch_8194-cf13-1f56" + LF
         + "Content-Type: multipart/mixed; boundary=changeset_f980-1cb6-94dd" + LF
         + LF
         + "--changeset_f980-1cb6-94dd" + LF
         + MIME_HEADERS
-        + "Content-Id: " + CONTENT_ID_REFERENCE + LF
+        + "Content-ID: " + CONTENT_ID_REFERENCE + LF
         + LF
         + "POST Employees HTTP/1.1" + LF
         + "Content-type: application/octet-stream" + LF
@@ -579,7 +579,7 @@ public class BatchRequestParserTest {
         + LF
         + "PUT $" + CONTENT_ID_REFERENCE + "/EmployeeName HTTP/1.1" + LF
         + "Content-Type: application/json;odata=verbose" + LF
-        + "Content-Id:" + PUT_REQUEST_HEADER_CONTENT_ID + LF
+        + "Content-ID:" + PUT_REQUEST_HEADER_CONTENT_ID + LF
         + LF
         + "{\"EmployeeName\":\"Peter Fall\"}" + LF
         + "--changeset_f980-1cb6-94dd--" + LF

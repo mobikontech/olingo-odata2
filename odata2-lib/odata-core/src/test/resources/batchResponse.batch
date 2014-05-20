@@ -4,7 +4,7 @@ Content-Type: multipart/mixed;boundary=changeset_12ks93js84d
 --changeset_12ks93js84d
 Content-Type: application/http
 Content-Transfer-Encoding: binary
-Content-Id: 1
+Content-ID: 1
 
 HTTP/1.1 204 No Content
 
@@ -15,7 +15,7 @@ Content-Transfer-Encoding: binary
 
 HTTP/1.1 201 Created
 DataServiceVersion: 2.0
-Content-Id: 2
+Content-ID: 2
 Location: http://localhost:19000/ClientBatchTest/Employees('7')
 Content-Type: application/json
 Content-Length: 918

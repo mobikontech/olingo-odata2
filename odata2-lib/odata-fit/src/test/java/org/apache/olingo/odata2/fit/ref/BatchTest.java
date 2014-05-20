@@ -75,12 +75,12 @@ public class BatchTest extends AbstractRefTest {
   @Test
   public void testContentIdEchoing() throws Exception {
     String responseBody = execute("/batchWithContentId.batch");
-    assertTrue(responseBody.contains("Content-Id: 1"));
-    assertTrue(responseBody.contains("Content-Id: 2"));
-    assertTrue(responseBody.contains("Content-Id: 3"));
-    assertTrue(responseBody.contains("Content-Id: 4"));
-    assertTrue(responseBody.contains("Content-Id: AAA"));
-    assertTrue(responseBody.contains("Content-Id: newEmployee"));
+    assertTrue(responseBody.contains("Content-ID: 1"));
+    assertTrue(responseBody.contains("Content-ID: 2"));
+    assertTrue(responseBody.contains("Content-ID: 3"));
+    assertTrue(responseBody.contains("Content-ID: 4"));
+    assertTrue(responseBody.contains("Content-ID: AAA"));
+    assertTrue(responseBody.contains("Content-ID: newEmployee"));
   }
 
   @Test
@@ -91,11 +91,11 @@ public class BatchTest extends AbstractRefTest {
     assertContentContainValues(responseBody,
         "{\"d\":{\"EmployeeName\":\"Frederic Fall\"}}",
         "HTTP/1.1 201 Created",
-        "Content-Id: employee",
+        "Content-ID: employee",
         "Content-Type: application/json;odata=verbose",
         "\"EmployeeId\":\"7\",\"EmployeeName\":\"Employee 7\",",
         "HTTP/1.1 204 No Content",
-        "Content-Id: AAA",
+        "Content-ID: AAA",
         "{\"d\":{\"EmployeeName\":\"Robert Fall\"}}");
 
     // validate that response for PUT does not contains a Content Type

@@ -223,7 +223,7 @@ public class BatchRequestTest {
 
     Map<String, String> changeSetHeaders = new HashMap<String, String>();
     changeSetHeaders.put("content-type", "application/json");
-    changeSetHeaders.put("content-Id", "111");
+    changeSetHeaders.put("Content-ID", "111");
     String body = "/9j/4AAQSkZJRgABAQEBLAEsAAD/4RM0RXhpZgAATU0AKgAAAAgABwESAAMAAAABAAEA";
     BatchChangeSetPart changeRequest = BatchChangeSetPart.method(POST)
         .uri("Employees")
@@ -236,7 +236,7 @@ public class BatchRequestTest {
 
     Map<String, String> changeSetHeaders2 = new HashMap<String, String>();
     changeSetHeaders2.put("content-type", "application/json;odata=verbose");
-    changeSetHeaders2.put("content-Id", "222");
+    changeSetHeaders2.put("Content-ID", "222");
     BatchChangeSetPart changeRequest2 = BatchChangeSetPart.method(PUT)
         .uri("Employees('2')/ManagerId")
         .body("{\"ManagerId\":1}")
