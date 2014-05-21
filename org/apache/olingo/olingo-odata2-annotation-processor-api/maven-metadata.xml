@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata>
   <groupId>org.apache.olingo</groupId>
-  <artifactId>olingo-odata2-annotation-processor</artifactId>
+  <artifactId>olingo-odata2-annotation-processor-api</artifactId>
   <versioning>
     <versions>
       <version>1.3.0-SNAPSHOT</version>
     </versions>
-    <lastUpdated>20140521062408</lastUpdated>
+    <lastUpdated>20140521062413</lastUpdated>
   </versioning>
 </metadata>
