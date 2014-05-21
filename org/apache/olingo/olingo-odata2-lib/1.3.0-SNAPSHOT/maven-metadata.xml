@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata modelVersion="1.1.0">
   <groupId>org.apache.olingo</groupId>
-  <artifactId>olingo-odata2-parent</artifactId>
+  <artifactId>olingo-odata2-lib</artifactId>
   <version>1.3.0-SNAPSHOT</version>
   <versioning>
     <snapshot>
-      <timestamp>20140521.062150</timestamp>
+      <timestamp>20140521.062157</timestamp>
       <buildNumber>1</buildNumber>
     </snapshot>
-    <lastUpdated>20140521062150</lastUpdated>
+    <lastUpdated>20140521062157</lastUpdated>
     <snapshotVersions>
       <snapshotVersion>
         <extension>pom</extension>
-        <value>1.3.0-20140521.062150-1</value>
-        <updated>20140521062150</updated>
+        <value>1.3.0-20140521.062157-1</value>
+        <updated>20140521062157</updated>
       </snapshotVersion>
     </snapshotVersions>
   </versioning>
