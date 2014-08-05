@@ -107,10 +107,11 @@ public class ODataExpressionParser {
 
       switch (binaryExpression.getOperator()) {
       case AND:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.AND + JPQLStatement.DELIMITER.SPACE
-            + right;
+        return "(" + left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.AND + JPQLStatement.DELIMITER.SPACE
+            + right + ")";
       case OR:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.OR + JPQLStatement.DELIMITER.SPACE + right;
+        return "(" + left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.OR + JPQLStatement.DELIMITER.SPACE
+            + right + ")";
       case EQ:
         return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.EQ + JPQLStatement.DELIMITER.SPACE + right;
       case NE:
@@ -327,11 +328,10 @@ public class ODataExpressionParser {
         String sec = String.format("%02d", datetime.get(Calendar.SECOND));
 
         value =
-            JPQLStatement.DELIMITER.LEFT_BRACE + JPQLStatement.KEYWORD.TIMESTAMP + JPQLStatement.DELIMITER.SPACE + "\'"
+            "\'"
                 + year + JPQLStatement.DELIMITER.HYPHEN + month + JPQLStatement.DELIMITER.HYPHEN + day
                 + JPQLStatement.DELIMITER.SPACE + hour + JPQLStatement.DELIMITER.COLON + min
-                + JPQLStatement.DELIMITER.COLON + sec + JPQLStatement.KEYWORD.OFFSET + "\'"
-                + JPQLStatement.DELIMITER.RIGHT_BRACE;
+                + JPQLStatement.DELIMITER.COLON + sec + JPQLStatement.KEYWORD.OFFSET + "\'";
 
       } catch (EdmSimpleTypeException e) {
         throw ODataJPARuntimeException.throwException(ODataJPARuntimeException.GENERAL.addContent(e.getMessage()), e);

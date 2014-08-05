@@ -22,11 +22,11 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 
 import javax.persistence.Column;
-import javax.persistence.JoinColumn;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.PluralAttribute;
 
+import org.apache.olingo.odata2.api.edm.EdmMultiplicity;
 import org.apache.olingo.odata2.api.edm.FullQualifiedName;
 import org.apache.olingo.odata2.api.edm.provider.Association;
 import org.apache.olingo.odata2.api.edm.provider.AssociationSet;
@@ -129,6 +129,7 @@ public class JPAEdmNameBuilder {
     Attribute<?, ?> jpaAttribute = view.getJPAAttribute();
     String jpaAttributeName = jpaAttribute.getName();
     String propertyName = null;
+    String[] joinColumnNames = null;
 
     JPAEdmMappingModelAccess mappingModelAccess = view.getJPAEdmMappingModelAccess();
     if (mappingModelAccess != null && mappingModelAccess.isMappingModelExists()) {
@@ -147,7 +148,8 @@ public class JPAEdmNameBuilder {
     } else if (propertyName == null) {
       propertyName = jpaAttributeName;
       if (isForeignKey == true) {
-        propertyName = FK_PREFIX + UNDERSCORE + propertyName;
+        joinColumnNames = view.getJPAJoinColumns().get(view.getJPAJoinColumns().size() - 1);
+        propertyName = FK_PREFIX + UNDERSCORE + joinColumnNames[0];
       }
     }
 
@@ -162,9 +164,8 @@ public class JPAEdmNameBuilder {
       if (column != null) {
         mapping.setJPAColumnName(column.name());
       } else {
-        JoinColumn joinColumn = annotatedElement.getAnnotation(JoinColumn.class);
-        if (joinColumn != null) {
-          mapping.setJPAColumnName(joinColumn.name());
+        if (joinColumnNames != null) {
+          mapping.setJPAColumnName(joinColumnNames[0]);
           jpaAttributeName += "." + view.getJPAReferencedAttribute().getName();
         }
       }
@@ -497,7 +498,15 @@ public class JPAEdmNameBuilder {
 
     navProp.setName(navPropName);
 
-    if (toName.equals(associationEndTypeOne.getName())) {
+    if (toName.equals(fromName)) {
+        if (jpaAttribute.isCollection() == (association.getEnd1().getMultiplicity() == EdmMultiplicity.MANY)) {
+            navProp.setFromRole(association.getEnd2().getRole());
+            navProp.setToRole(association.getEnd1().getRole());
+        } else {
+            navProp.setToRole(association.getEnd2().getRole());
+            navProp.setFromRole(association.getEnd1().getRole());
+        }
+    } else if (toName.equals(associationEndTypeOne.getName())) {
       navProp.setFromRole(association.getEnd2().getRole());
       navProp.setToRole(association.getEnd1().getRole());
     } else if (toName.equals(associationEndTypeTwo.getName())) {

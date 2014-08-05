@@ -19,8 +19,9 @@
 package org.apache.olingo.odata2.jpa.processor.core.model;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Array;
+import java.util.List;
 
-import javax.persistence.JoinColumn;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
@@ -41,8 +42,8 @@ public class JPAEdmAssociationEnd extends JPAEdmBaseViewImpl implements JPAEdmAs
   private JPAEdmPropertyView propertyView = null;
   private AssociationEnd currentAssociationEnd1 = null;
   private AssociationEnd currentAssociationEnd2 = null;
-  private String columnName;
-  private String referencedColumnName;
+  private String[] columnNames;
+  private String[] referencedColumnNames;
   private String mappedBy;
   private String ownerPropertyName;
 
@@ -76,29 +77,35 @@ public class JPAEdmAssociationEnd extends JPAEdmBaseViewImpl implements JPAEdmAs
     @Override
     public void build() throws ODataJPAModelException {
 
-      JoinColumn joinColumn = null;
-
       currentAssociationEnd1 = new AssociationEnd();
       currentAssociationEnd2 = new AssociationEnd();
 
       JPAEdmNameBuilder.build(JPAEdmAssociationEnd.this, entityTypeView, propertyView);
 
-      currentAssociationEnd1.setRole(currentAssociationEnd1.getType().getName());
-      currentAssociationEnd2.setRole(currentAssociationEnd2.getType().getName());
+      String end1Role = currentAssociationEnd1.getType().getName();
+      String end2Role = currentAssociationEnd2.getType().getName();
+
+      if (end1Role.equals(end2Role)) {
+        end1Role = end1Role + "1";
+        end2Role = end2Role + "2";
+      }
+
+      currentAssociationEnd1.setRole(end1Role);
+      currentAssociationEnd2.setRole(end2Role);
 
       setEdmMultiplicity(propertyView.getJPAAttribute().getPersistentAttributeType());
 
-      AnnotatedElement annotatedElement = (AnnotatedElement) propertyView.getJPAAttribute().getJavaMember();
-      if (annotatedElement != null) {
-        joinColumn = annotatedElement.getAnnotation(JoinColumn.class);
-        if (joinColumn != null) {
-          columnName = joinColumn.name();
-          referencedColumnName = joinColumn.referencedColumnName();
+      List<String[]> joinColumnNames = propertyView.getJPAJoinColumns();
+      if (joinColumnNames != null) {
+        int i = 0;
+        columnNames = (String[]) Array.newInstance(String.class, joinColumnNames.size());
+        referencedColumnNames = (String[]) Array.newInstance(String.class, joinColumnNames.size());
+        for (String[] jc : joinColumnNames) {
+          columnNames[i] = jc[0];
+          referencedColumnNames[i++] = jc[1];
         }
-
       }
       ownerPropertyName = propertyView.getJPAAttribute().getName();
-
     }
 
     private void setEdmMultiplicity(final PersistentAttributeType type) {
@@ -161,13 +168,13 @@ public class JPAEdmAssociationEnd extends JPAEdmBaseViewImpl implements JPAEdmAs
   }
 
   @Override
-  public String getJoinColumnName() {
-    return columnName;
+  public String[] getJoinColumnNames() {
+    return columnNames;
   }
 
   @Override
-  public String getJoinColumnReferenceColumnName() {
-    return referencedColumnName;
+  public String[] getJoinColumnReferenceColumnNames() {
+    return referencedColumnNames;
   }
 
   @Override
