@@ -40,7 +40,7 @@ public interface BatchSingleResponse extends BatchParserResult {
   public String getStatusInfo();
 
   /**
-   * @return a value of the Content-ID header
+   * @return a value of the Content-Id header
    */
   public String getContentId();
 

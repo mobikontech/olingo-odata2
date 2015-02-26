@@ -126,7 +126,7 @@ public class JPAExpandCallBackTest {
       field.set(callBack, expandList);
       Class<?>[] formalParams = { EdmEntityType.class, EdmNavigationProperty.class };
       Object[] actualParams = { EdmMockUtil.mockSourceEdmEntityType(), EdmMockUtil.mockNavigationProperty() };
-      Method method = callBack.getClass().getDeclaredMethod("getNextNavigationProperties", formalParams);
+      Method method = callBack.getClass().getDeclaredMethod("getNextNavigationProperty", formalParams);
       method.setAccessible(true);
       result = (List<EdmNavigationProperty>) method.invoke(callBack, actualParams);
       assertEquals("MaterialDetails", result.get(0).getName());
