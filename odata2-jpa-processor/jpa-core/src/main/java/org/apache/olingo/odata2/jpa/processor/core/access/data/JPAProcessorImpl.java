@@ -361,6 +361,10 @@ public class JPAProcessorImpl implements JPAProcessor {
       } catch (Exception e) {
         throw ODataJPARuntimeException.throwException(
             ODataJPARuntimeException.ERROR_JPQL_DELETE_REQUEST, e);
+      } finally {
+          if (em.getTransaction().isActive()) {
+              em.getTransaction().rollback();
+          }
       }
     }
     return selectedObject;
@@ -523,49 +527,6 @@ public class JPAProcessorImpl implements JPAProcessor {
     }
 
     return jpaEntity;
-  }
-
-  /* Process Delete Entity Request */
-  @Override
-  public Object process(DeleteUriInfo uriParserResultView, final String contentType)
-      throws ODataJPAModelException, ODataJPARuntimeException {
-    JPQLContextType contextType = null;
-    try {
-      if (uriParserResultView instanceof DeleteUriInfo) {
-        if (((UriInfo) uriParserResultView).isLinks()) {
-          return deleteLink(uriParserResultView);
-        }
-        uriParserResultView = ((DeleteUriInfo) uriParserResultView);
-        if (!((DeleteUriInfo) uriParserResultView).getStartEntitySet().getName()
-            .equals(((DeleteUriInfo) uriParserResultView).getTargetEntitySet().getName())) {
-          contextType = JPQLContextType.JOIN_SINGLE;
-        } else {
-          contextType = JPQLContextType.SELECT_SINGLE;
-        }
-      }
-    } catch (EdmException e) {
-      ODataJPARuntimeException.throwException(
-          ODataJPARuntimeException.GENERAL, e);
-    }
-
-    Object selectedObject = readEntity(uriParserResultView, contextType);
-    if (selectedObject != null) {
-      try {
-        em.getTransaction().begin();
-        em.remove(selectedObject);
-        em.flush();
-        em.getTransaction().commit();
-
-      } catch (Exception e) {
-        throw ODataJPARuntimeException.throwException(
-            ODataJPARuntimeException.ERROR_JPQL_DELETE_REQUEST, e);
-      } finally {
-          if (em.getTransaction().isActive()) {
-              em.getTransaction().rollback();
-          }
-      }
-    }
-    return selectedObject;
   }
 
   private Object deleteLink(final DeleteUriInfo uriParserResultView) throws ODataJPARuntimeException {
