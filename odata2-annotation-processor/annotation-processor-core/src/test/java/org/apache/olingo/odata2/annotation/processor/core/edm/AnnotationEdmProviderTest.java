@@ -40,11 +40,14 @@ import org.apache.olingo.odata2.annotation.processor.core.model.Team;
 import org.apache.olingo.odata2.api.annotation.edm.EdmComplexType;
 import org.apache.olingo.odata2.api.annotation.edm.EdmEntitySet;
 import org.apache.olingo.odata2.api.annotation.edm.EdmEntityType;
+import org.apache.olingo.odata2.api.annotation.edm.EdmProperty;
+import org.apache.olingo.odata2.api.edm.EdmConcurrencyMode;
 import org.apache.olingo.odata2.api.edm.EdmMultiplicity;
 import org.apache.olingo.odata2.api.edm.FullQualifiedName;
 import org.apache.olingo.odata2.api.edm.provider.Association;
 import org.apache.olingo.odata2.api.edm.provider.AssociationEnd;
 import org.apache.olingo.odata2.api.edm.provider.AssociationSet;
+import org.apache.olingo.odata2.api.edm.provider.ComplexProperty;
 import org.apache.olingo.odata2.api.edm.provider.ComplexType;
 import org.apache.olingo.odata2.api.edm.provider.EntityContainer;
 import org.apache.olingo.odata2.api.edm.provider.EntityContainerInfo;
@@ -68,7 +71,9 @@ public class AnnotationEdmProviderTest {
 
   @EdmEntityType
   @EdmEntitySet
-  private static final class GeneratedNamesTestClass {}
+  private static final class GeneratedNamesTestClass {
+    @EdmProperty GeneratedNamesComplexTestClass myComplexProperty;
+  }
 
   @EdmComplexType
   private static final class GeneratedNamesComplexTestClass {}
@@ -95,9 +100,10 @@ public class AnnotationEdmProviderTest {
   }
 
   @Test
-  public void defaultNamespaceGeneration() throws ODataException {
+  public void defaultNameAndNamespaceGeneration() throws ODataException {
     Collection<Class<?>> localAnnotatedClasses = new ArrayList<Class<?>>();
     localAnnotatedClasses.add(GeneratedNamesTestClass.class);
+    localAnnotatedClasses.add(GeneratedNamesComplexTestClass.class);
     AnnotationEdmProvider localAep = new AnnotationEdmProvider(localAnnotatedClasses);
     // validate
     EntityType testType = localAep.getEntityType(new FullQualifiedName(
@@ -106,6 +112,20 @@ public class AnnotationEdmProviderTest {
     assertNotNull("Requested entity not found.", testType);
     assertEquals("GeneratedNamesTestClass", testType.getName());
     assertNull("This should not have a base type", testType.getBaseType());
+    List<Property> properties = testType.getProperties();
+    assertEquals(1, properties.size());
+    ComplexProperty propComplex = (ComplexProperty) properties.get(0);
+    assertEquals("MyComplexProperty", propComplex.getName());
+    assertEquals(GeneratedNamesComplexTestClass.class.getPackage().getName(), propComplex.getType().getNamespace());
+    assertEquals(GeneratedNamesComplexTestClass.class.getSimpleName(), propComplex.getType().getName());
+
+
+    ComplexType testComplexType = localAep.getComplexType(
+        new FullQualifiedName(GeneratedNamesComplexTestClass.class.getPackage().getName(),
+            GeneratedNamesComplexTestClass.class.getSimpleName()));
+    assertNotNull("Requested entity not found.", testComplexType);
+    assertEquals("GeneratedNamesComplexTestClass", testComplexType.getName());
+    assertNull("This should not have a base type", testComplexType.getBaseType());
   }
 
   @Test
@@ -202,7 +222,7 @@ public class AnnotationEdmProviderTest {
     assertEquals("Buildings", asBuildingRooms.getEnd1().getEntitySet());
     assertEquals("r_Building", asBuildingRooms.getEnd1().getRole());
     assertEquals("Rooms", asBuildingRooms.getEnd2().getEntitySet());
-    assertEquals("r_Room", asBuildingRooms.getEnd2().getRole());
+    assertEquals("r_Rooms", asBuildingRooms.getEnd2().getRole());
   }
 
   @Test
@@ -232,7 +252,7 @@ public class AnnotationEdmProviderTest {
     assertEquals(6, entitySets.size());
 
     List<Association> associations = schema.getAssociations();
-    assertEquals(4, associations.size());
+    assertEquals(5, associations.size());
     for (Association association : associations) {
       assertNotNull(association.getName());
       validateAssociation(association);
@@ -245,22 +265,26 @@ public class AnnotationEdmProviderTest {
 
   private void validateAssociation(final Association association) {
     String name = association.getName();
-    if (name.equals("r_Employee-r_Room")) {
+    if (name.equals("r_Employees-r_Room")) {
       validateAssociation(association,
           "r_Room", EdmMultiplicity.ONE, defaultFqn("Room"),
-          "r_Employee", EdmMultiplicity.MANY, defaultFqn("Employee"));
+          "r_Employees", EdmMultiplicity.MANY, defaultFqn("Employee"));
     } else if (name.equals("BuildingRooms")) {
       validateAssociation(association,
           "r_Building", EdmMultiplicity.ONE, defaultFqn("Building"),
-          "r_Room", EdmMultiplicity.MANY, defaultFqn("Room"));
+          "r_Rooms", EdmMultiplicity.MANY, defaultFqn("Room"));
     } else if (name.equals("ManagerEmployees")) {
       validateAssociation(association,
           "r_Manager", EdmMultiplicity.ONE, defaultFqn("Manager"),
-          "r_Employee", EdmMultiplicity.MANY, defaultFqn("Employee"));
+          "r_Employees", EdmMultiplicity.MANY, defaultFqn("Employee"));
     } else if (name.equals("TeamEmployees")) {
       validateAssociation(association,
           "r_Team", EdmMultiplicity.ONE, defaultFqn("Team"),
-          "r_Employee", EdmMultiplicity.MANY, defaultFqn("Employee"));
+          "r_Employees", EdmMultiplicity.MANY, defaultFqn("Employee"));
+    } else if (name.equals("Team-r_SubTeam")) {
+      validateAssociation(association,
+          "Team", EdmMultiplicity.ONE, defaultFqn("Team"),
+          "r_SubTeam", EdmMultiplicity.ONE, defaultFqn("Team"));
     } else {
       fail("Got unknown association to validate with name '" + name + "'.");
     }
@@ -308,18 +332,43 @@ public class AnnotationEdmProviderTest {
     assertEquals("EmployeeId", employeeKeys.get(0).getName());
     assertEquals(6, employee.getProperties().size());
     assertEquals(3, employee.getNavigationProperties().size());
+    Property name = getProperty(employee, "EmployeeName");
+    assertEquals(Integer.valueOf(20), name.getFacets().getMaxLength());
 
     for (NavigationProperty navigationProperty : employee.getNavigationProperties()) {
       if (navigationProperty.getName().equals("ne_Manager")) {
-        validateNavProperty(navigationProperty, "ManagerEmployees", "r_Employee", "r_Manager");
+        validateNavProperty(navigationProperty, "ManagerEmployees", "r_Employees", "r_Manager");
       } else if (navigationProperty.getName().equals("ne_Team")) {
-        validateNavProperty(navigationProperty, "TeamEmployees", "r_Employee", "r_Team");
+        validateNavProperty(navigationProperty, "TeamEmployees", "r_Employees", "r_Team");
       } else if (navigationProperty.getName().equals("ne_Room")) {
-        validateNavProperty(navigationProperty, "r_Employee-r_Room", "r_Employee", "r_Room");
+        validateNavProperty(navigationProperty, "r_Employees-r_Room", "r_Employees", "r_Room");
       } else {
         fail("Got unexpected navigation property with name '" + navigationProperty.getName() + "'.");
       }
     }
+  }
+
+
+  @Test
+  public void facetsTest() throws Exception {
+    EntityType employee = aep.getEntityType(new FullQualifiedName(ModelSharedConstants.NAMESPACE_1, "Employee"));
+    assertEquals("Employee", employee.getName());
+    Property name = getProperty(employee, "EmployeeName");
+    assertEquals(Integer.valueOf(20), name.getFacets().getMaxLength());
+    assertNull(name.getFacets().getConcurrencyMode());
+    assertTrue(name.getFacets().isNullable());
+    Property id = getProperty(employee, "EmployeeId");
+    assertFalse(id.getFacets().isNullable());
+
+    ComplexType city = aep.getComplexType(new FullQualifiedName(ModelSharedConstants.NAMESPACE_1, "c_City"));
+    Property postalCode = getProperty(city.getProperties(), "PostalCode");
+    assertEquals(Integer.valueOf(5), postalCode.getFacets().getMaxLength());
+
+    EntityType room = aep.getEntityType(new FullQualifiedName(ModelSharedConstants.NAMESPACE_1, "Room"));
+    Property version = getProperty(room, "Version");
+    assertEquals(Integer.valueOf(0), version.getFacets().getScale());
+    assertEquals(Integer.valueOf(0), version.getFacets().getPrecision());
+    assertEquals(EdmConcurrencyMode.Fixed, version.getFacets().getConcurrencyMode());
   }
 
   @Test
@@ -331,9 +380,11 @@ public class AnnotationEdmProviderTest {
     assertEquals(ModelSharedConstants.NAMESPACE_1, team.getBaseType().getNamespace());
 
     assertEquals(1, team.getProperties().size());
-    assertEquals(1, team.getNavigationProperties().size());
-    NavigationProperty navigationProperty = team.getNavigationProperties().get(0);
-    validateNavProperty(navigationProperty, "TeamEmployees", "r_Team", "r_Employee");
+    assertEquals(2, team.getNavigationProperties().size());
+    NavigationProperty navPropTeamEmployess = team.getNavigationProperties().get(0);
+    validateNavProperty(navPropTeamEmployess, "TeamEmployees", "r_Team", "r_Employees");
+    NavigationProperty navPropTeamTeam = team.getNavigationProperties().get(1);
+    validateNavProperty(navPropTeamTeam, "Team-r_SubTeam", "Team", "r_SubTeam");
   }
 
   @Test
@@ -414,9 +465,9 @@ public class AnnotationEdmProviderTest {
 
     for (NavigationProperty navigationProperty : navigationProperties) {
       if (navigationProperty.getName().equals("nr_Employees")) {
-        validateNavProperty(navigationProperty, "r_Employee-r_Room", "r_Room", "r_Employee");
+        validateNavProperty(navigationProperty, "r_Employees-r_Room", "r_Room", "r_Employees");
       } else if (navigationProperty.getName().equals("nr_Building")) {
-        validateNavProperty(navigationProperty, "BuildingRooms", "r_Room", "r_Building");
+        validateNavProperty(navigationProperty, "BuildingRooms", "r_Rooms", "r_Building");
       } else {
         fail("Got unexpected navigation property with name '" + navigationProperty.getName() + "'.");
       }
@@ -443,12 +494,17 @@ public class AnnotationEdmProviderTest {
     return getProperty(properties, propertyName) != null;
   }
 
+  private Property getProperty(EntityType entity, String propertyName) {
+    return getProperty(entity.getProperties(), propertyName);
+  }
+
   private Property getProperty(final List<Property> properties, final String name) {
     for (Property property : properties) {
       if (name.equals(property.getName())) {
         return property;
       }
     }
+    fail("Requested property with name '" + name + "' not available.");
     return null;
   }
 

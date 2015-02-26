@@ -35,13 +35,16 @@ import java.util.UUID;
 import org.apache.olingo.odata2.annotation.processor.core.util.AnnotationHelper;
 import org.apache.olingo.odata2.annotation.processor.core.util.ClassHelper;
 import org.apache.olingo.odata2.api.annotation.edm.EdmComplexType;
+import org.apache.olingo.odata2.api.annotation.edm.EdmConcurrencyControl;
 import org.apache.olingo.odata2.api.annotation.edm.EdmEntitySet;
 import org.apache.olingo.odata2.api.annotation.edm.EdmEntityType;
+import org.apache.olingo.odata2.api.annotation.edm.EdmFacets;
 import org.apache.olingo.odata2.api.annotation.edm.EdmKey;
 import org.apache.olingo.odata2.api.annotation.edm.EdmMediaResourceContent;
 import org.apache.olingo.odata2.api.annotation.edm.EdmNavigationProperty;
 import org.apache.olingo.odata2.api.annotation.edm.EdmProperty;
 import org.apache.olingo.odata2.api.annotation.edm.EdmType;
+import org.apache.olingo.odata2.api.edm.EdmConcurrencyMode;
 import org.apache.olingo.odata2.api.edm.EdmMultiplicity;
 import org.apache.olingo.odata2.api.edm.FullQualifiedName;
 import org.apache.olingo.odata2.api.edm.provider.AnnotationAttribute;
@@ -57,6 +60,7 @@ import org.apache.olingo.odata2.api.edm.provider.EntityContainer;
 import org.apache.olingo.odata2.api.edm.provider.EntityContainerInfo;
 import org.apache.olingo.odata2.api.edm.provider.EntitySet;
 import org.apache.olingo.odata2.api.edm.provider.EntityType;
+import org.apache.olingo.odata2.api.edm.provider.Facets;
 import org.apache.olingo.odata2.api.edm.provider.FunctionImport;
 import org.apache.olingo.odata2.api.edm.provider.Key;
 import org.apache.olingo.odata2.api.edm.provider.NavigationProperty;
@@ -279,7 +283,7 @@ public class AnnotationEdmProvider extends EdmProvider {
   private void handleEntityContainer(final Class<?> aClass) {
     EdmEntityType entityType = aClass.getAnnotation(EdmEntityType.class);
     if (entityType != null) {
-      FullQualifiedName typeName = createFqnForEntityType(aClass, entityType);
+      FullQualifiedName typeName = createFqnForEntityType(aClass);
       String containerName = ANNOTATION_HELPER.extractContainerName(aClass);
       ContainerBuilder builder = containerName2ContainerBuilder.get(containerName);
       if (builder == null) {
@@ -298,7 +302,7 @@ public class AnnotationEdmProvider extends EdmProvider {
     return new EntitySet().setName(entitySetName).setEntityType(typeName);
   }
 
-  private FullQualifiedName createFqnForEntityType(final Class<?> annotatedClass, final EdmEntityType entityType) {
+  private FullQualifiedName createFqnForEntityType(final Class<?> annotatedClass) {
     return ANNOTATION_HELPER.extractEntityTypeFqn(annotatedClass);
   }
 
@@ -362,7 +366,7 @@ public class AnnotationEdmProvider extends EdmProvider {
       for (Field field : fields) {
         EdmProperty ep = field.getAnnotation(EdmProperty.class);
         if (ep != null) {
-          properties.add(createProperty(ep, field, namespace));
+          properties.add(createProperty(ep, field));
           EdmKey eti = field.getAnnotation(EdmKey.class);
           if (eti != null) {
             keyProperties.add(createKeyProperty(ep, field));
@@ -370,9 +374,13 @@ public class AnnotationEdmProvider extends EdmProvider {
         }
         EdmNavigationProperty enp = field.getAnnotation(EdmNavigationProperty.class);
         if (enp != null) {
-          final NavigationProperty navProperty = createNavigationProperty(namespace, enp, field);
+          Class<?> fromClass = field.getDeclaringClass();
+          Class<?> toClass = ClassHelper.getFieldType(field);
+          AnnotationHelper.AnnotatedNavInfo info = ANNOTATION_HELPER.getCommonNavigationInfo(fromClass, toClass);
+
+          final NavigationProperty navProperty = createNavigationProperty(namespace, field, info);
           navProperties.add(navProperty);
-          Association association = createAssociation(field, navProperty);
+          Association association = createAssociation(info);
           associations.add(association);
         }
         EdmMediaResourceContent emrc = field.getAnnotation(EdmMediaResourceContent.class);
@@ -442,9 +450,9 @@ public class AnnotationEdmProvider extends EdmProvider {
       return keyProperty.setName(entityName);
     }
 
-    private Property createProperty(final EdmProperty ep, final Field field, final String defaultNamespace) {
+    private Property createProperty(final EdmProperty ep, final Field field) {
       if (isAnnotatedEntity(field.getType())) {
-        return createComplexProperty(field, defaultNamespace);
+        return createComplexProperty(field);
       } else {
         return createSimpleProperty(ep, field);
       }
@@ -460,38 +468,49 @@ public class AnnotationEdmProvider extends EdmProvider {
         type = getEdmType(field.getType());
       }
       sp.setType(ANNOTATION_HELPER.mapTypeKind(type));
-
+      sp.setFacets(createFacets(ep.facets(), field.getAnnotation(EdmConcurrencyControl.class)));
       return sp;
     }
 
-    private Property createComplexProperty(final Field field, final String defaultNamespace) {
+    private Facets createFacets(final EdmFacets facets, final EdmConcurrencyControl concurrencyControl) {
+      Facets resultFacets = new Facets().setNullable(facets.nullable());
+      if(facets.maxLength() > -1) {
+        resultFacets.setMaxLength(facets.maxLength());
+      }
+      if(facets.precision() > -1) {
+        resultFacets.setPrecision(facets.precision());
+      }
+      if(facets.scale() > -1) {
+        resultFacets.setScale(facets.scale());
+      }
+      if (concurrencyControl != null) {
+        resultFacets.setConcurrencyMode(EdmConcurrencyMode.Fixed);
+      }
+      return resultFacets;
+    }
+
+    private Property createComplexProperty(final Field field) {
       ComplexProperty cp = new ComplexProperty();
       // settings from property
       String entityName = ANNOTATION_HELPER.getPropertyName(field);
       cp.setName(entityName);
 
       // settings from related complex entity
-      EdmComplexType ece = field.getType().getAnnotation(EdmComplexType.class);
-      String complexEntityNamespace = ece.namespace();
-      if (complexEntityNamespace.isEmpty()) {
-        complexEntityNamespace = defaultNamespace;
-      }
-      cp.setType(new FullQualifiedName(complexEntityNamespace, ece.name()));
+      FullQualifiedName fqn = ANNOTATION_HELPER.extractComplexTypeFqn(field.getType());
+      cp.setType(fqn);
 
       return cp;
     }
 
-    private NavigationProperty createNavigationProperty(final String namespace, final EdmNavigationProperty enp,
-        final Field field) {
+    private NavigationProperty createNavigationProperty(final String namespace, Field field,
+                                                        AnnotationHelper.AnnotatedNavInfo navInfo) {
       NavigationProperty navProp = new NavigationProperty();
       navProp.setName(ANNOTATION_HELPER.getPropertyName(field));
-      String fromRole = ANNOTATION_HELPER.extractFromRoleName(enp, field);
+      String fromRole = navInfo.getFromRoleName();
       navProp.setFromRole(fromRole);
+      navProp.setToRole(navInfo.getToRoleName());
 
-      String toRole = ANNOTATION_HELPER.extractToRoleName(enp, field);
-      navProp.setToRole(toRole);
-
-      String relationshipName = ANNOTATION_HELPER.extractRelationshipName(enp, field);
+      String relationshipName = navInfo.getRelationshipName();
       navProp.setRelationship(new FullQualifiedName(namespace, relationshipName));
 
       return navProp;
@@ -583,25 +602,22 @@ public class AnnotationEdmProvider extends EdmProvider {
       return ANNOTATION_HELPER.extractEntityTypeFqn(baseEntityClass);
     }
 
-    private Association createAssociation(final Field field, final NavigationProperty navProperty) {
+    private Association createAssociation(final AnnotationHelper.AnnotatedNavInfo info) {
       Association association = new Association();
-      EdmNavigationProperty navigation = field.getAnnotation(EdmNavigationProperty.class);
 
       AssociationEnd fromEnd = new AssociationEnd();
-      fromEnd.setRole(navProperty.getFromRole());
-      String typeName = ANNOTATION_HELPER.extractEntityTypeName(field.getDeclaringClass());
-      fromEnd.setType(new FullQualifiedName(namespace, typeName));
-      fromEnd.setMultiplicity(EdmMultiplicity.ONE);
+      fromEnd.setRole(info.getFromRoleName());
+      fromEnd.setType(new FullQualifiedName(namespace, info.getFromTypeName()));
+      fromEnd.setMultiplicity(info.getFromMultiplicity());
       association.setEnd1(fromEnd);
 
       AssociationEnd toEnd = new AssociationEnd();
-      toEnd.setRole(navProperty.getToRole());
-      String toTypeName = ANNOTATION_HELPER.extractEntitTypeName(navigation, field);
-      toEnd.setType(new FullQualifiedName(namespace, toTypeName));
-      toEnd.setMultiplicity(ANNOTATION_HELPER.getMultiplicity(navigation, field));
+      toEnd.setRole(info.getToRoleName());
+      toEnd.setType(new FullQualifiedName(namespace, info.getToTypeName()));
+      toEnd.setMultiplicity(info.getToMultiplicity());
       association.setEnd2(toEnd);
 
-      String associationName = navProperty.getRelationship().getName();
+      String associationName = info.getRelationshipName();
       association.setName(associationName);
       return association;
     }

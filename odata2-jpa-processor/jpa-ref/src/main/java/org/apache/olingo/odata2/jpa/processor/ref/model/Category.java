@@ -24,11 +24,13 @@ import java.util.List;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.IdClass;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 @Entity
 @Table(name = "T_CATEGORY")
+@IdClass(value = CategoryKey.class)
 public class Category {
 
   @Id

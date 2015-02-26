@@ -163,6 +163,9 @@ public final class JPAEntityParser {
     Object result = null;
     String methodName = null;
     HashMap<String, Object> navigationMap = new HashMap<String, Object>();
+    if (jpaEntity == null) {
+      return navigationMap;
+    }
     if (navigationPropertyList != null
         && navigationPropertyList.size() != 0) {
 
@@ -171,7 +174,7 @@ public final class JPAEntityParser {
           methodName = getAccessModifierName(navigationProperty.getName(),
               navigationProperty.getMapping(), ACCESS_MODIFIER_GET);
           Method getterMethod = jpaEntity.getClass()
-              .getDeclaredMethod(methodName, (Class<?>[]) null);
+              .getMethod(methodName, (Class<?>[]) null);
           getterMethod.setAccessible(true);
           result = getPropertyValue(getterMethod, jpaEntity);
           navigationMap.put(navigationProperty.getName(), result);
@@ -540,6 +543,8 @@ public final class JPAEntityParser {
               String nameWithIs = getAccessModifierName(property.getName(),
                   property.getMapping(), ACCESS_MODIFIER_IS);
               method = jpaEntityType.getMethod(nameWithIs, (Class<?>[]) null);
+            } else {
+              throw ODataJPARuntimeException.throwException(ODataJPARuntimeException.INNER_EXCEPTION, e1);
             }
           } catch (EdmException exp) {
             throw ODataJPARuntimeException.throwException(ODataJPARuntimeException.INNER_EXCEPTION, exp);

@@ -94,29 +94,28 @@ public class JPAEdmAssociationSet extends JPAEdmBaseViewImpl implements JPAEdmAs
           currentAssociationSet.setAssociation(fQname);
 
           int endCount = 0;
+          FullQualifiedName end1Type = association.getEnd1().getType();
+          FullQualifiedName end2Type = association.getEnd2().getType();
+
           for (EntitySet entitySet : entitySetList) {
             fQname = entitySet.getEntityType();
-
-            if (fQname.equals(association.getEnd1().getType())) {
+            if (fQname.equals(end1Type)) {
               AssociationSetEnd end = new AssociationSetEnd();
               end.setEntitySet(entitySet.getName());
               currentAssociationSet.setEnd1(end);
               end.setRole(association.getEnd1().getRole());
               endCount++;
             }
-
-            if (fQname.equals(association.getEnd2().getType())) {
+            if (fQname.equals(end2Type)) {
               AssociationSetEnd end = new AssociationSetEnd();
               end.setEntitySet(entitySet.getName());
               currentAssociationSet.setEnd2(end);
               end.setRole(association.getEnd2().getRole());
               endCount++;
             }
-
             if (endCount == 2) {
               break;
             }
-
           }
           if (endCount == 2) {
             JPAEdmNameBuilder.build(JPAEdmAssociationSet.this);

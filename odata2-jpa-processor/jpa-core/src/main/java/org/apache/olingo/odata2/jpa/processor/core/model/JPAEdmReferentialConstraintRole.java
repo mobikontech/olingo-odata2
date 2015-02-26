@@ -141,9 +141,11 @@ public class JPAEdmReferentialConstraintRole extends JPAEdmBaseViewImpl implemen
 
     private void buildRole() throws SecurityException, NoSuchFieldException {
 
+      int index = 0;
       if (currentRole == null) {
         currentRole = new ReferentialConstraintRole();
         String jpaAttributeType = null;
+        String jpaColumnName = null;
         EntityType edmEntityType = null;
 
         if (roleType == RoleType.PRINCIPAL) {
@@ -156,6 +158,7 @@ public class JPAEdmReferentialConstraintRole extends JPAEdmBaseViewImpl implemen
             jpaAttributeType = type.toString().substring(lastIndexOfDot + 1);
           }
           edmEntityType = entityTypeView.searchEdmEntityType(jpaAttributeType);
+          index = 1;
         } else if (roleType == RoleType.DEPENDENT) {
           edmEntityType =
               entityTypeView.searchEdmEntityType(jpaAttribute.getDeclaringType().getJavaType().getSimpleName());
@@ -165,15 +168,11 @@ public class JPAEdmReferentialConstraintRole extends JPAEdmBaseViewImpl implemen
         if (edmEntityType != null) {
           for (String[] columnName : jpaColumnNames) {
             for (Property property : edmEntityType.getProperties()) {
-              String jpaColumnName = ((JPAEdmMapping) property.getMapping()).getJPAColumnName();
-              String propertyName = property.getName();
-              boolean isForeignKey = (columnName[0].equals(jpaColumnName) || columnName[0].equals(propertyName))
-                      && roleType == RoleType.DEPENDENT;
-              boolean isReferencedKey = (columnName[1].equals(jpaColumnName) || columnName[1].equals(propertyName))
-                      && roleType == RoleType.PRINCIPAL;
-              if (isForeignKey || isReferencedKey) {
+              jpaColumnName = ((JPAEdmMapping) property.getMapping()).getJPAColumnName();
+              if (columnName[index].equals(jpaColumnName) ||
+                  columnName[index].equals(property.getName())) {
                 PropertyRef propertyRef = new PropertyRef();
-                propertyRef.setName(propertyName);
+                propertyRef.setName(property.getName());
                 propertyRefs.add(propertyRef);
                 break;
               }
@@ -184,14 +183,22 @@ public class JPAEdmReferentialConstraintRole extends JPAEdmBaseViewImpl implemen
             isConsistent = false;
             return;
           }
-          AssociationEnd end = association.getEnd1();
-          if (end.getType().getName().equals(edmEntityType.getName())) {
-            currentRole.setRole(end.getRole());
+          // First condition is required for Self Joins where the entity type on both ends are same
+          AssociationEnd end1 = association.getEnd1();
+          AssociationEnd end2 = association.getEnd2();
+          if (end1.getType().getName().equals(end2.getType().getName())) {
+            if (roleType == RoleType.PRINCIPAL) {
+              currentRole.setRole(end1.getRole());
+            } else {
+              currentRole.setRole(end2.getRole());
+            }
             isConsistent = true;
           } else {
-            end = association.getEnd2();
-            if (end.getType().getName().equals(edmEntityType.getName())) {
-              currentRole.setRole(end.getRole());
+            if (end1.getType().getName().equals(edmEntityType.getName())) {
+              currentRole.setRole(end1.getRole());
+              isConsistent = true;
+            } else if (end2.getType().getName().equals(edmEntityType.getName())) {
+              currentRole.setRole(end2.getRole());
               isConsistent = true;
             }
           }

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Random;
@@ -72,6 +73,22 @@ public class StringHelper {
       return print(System.out);
     }
 
+    public String asStringWithLineSeparation(String separator) throws IOException {
+      BufferedReader br = new BufferedReader(new StringReader(asString()));
+      StringBuilder sb = new StringBuilder(br.readLine());
+      String line = br.readLine();
+      while (line != null) {
+        sb.append(separator).append(line);
+        line = br.readLine();
+      }
+      return sb.toString();
+    }
+
+    public InputStream asStreamWithLineSeparation(String separator) throws IOException {
+      String asString = asStringWithLineSeparation(separator);
+      return new ByteArrayInputStream(asString.getBytes("UTF-8"));
+    }
+
     /**
      * Number of lines separated by line breaks (<code>CRLF</code>).
      * A content string like <code>text\r\nmoreText</code> will result in
@@ -117,6 +134,23 @@ public class StringHelper {
       if (preserveLineBreaks) {
         stringBuilder.append("\n");
       }
+    }
+
+    bufferedReader.close();
+
+    final String result = stringBuilder.toString();
+
+    return result;
+  }
+
+  public static String inputStreamToStringCRLFLineBreaks(final InputStream in) throws IOException {
+    final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in, Charset.forName("UTF-8")));
+    final StringBuilder stringBuilder = new StringBuilder();
+    String line = null;
+
+    while ((line = bufferedReader.readLine()) != null) {
+      stringBuilder.append(line);
+      stringBuilder.append("\r\n");
     }
 
     bufferedReader.close();

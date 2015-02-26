@@ -39,6 +39,7 @@ import org.apache.olingo.odata2.api.client.batch.BatchPart;
 import org.apache.olingo.odata2.api.client.batch.BatchQueryPart;
 import org.apache.olingo.odata2.api.ep.EntityProviderBatchProperties;
 import org.apache.olingo.odata2.core.PathInfoImpl;
+import org.apache.olingo.odata2.core.batch.v2.BatchParser;
 import org.apache.olingo.odata2.testutil.helper.StringHelper;
 import org.junit.Test;
 
@@ -88,8 +89,8 @@ public class BatchRequestTest {
     checkHeaders(headers, requestBody);
 
     String contentType = "multipart/mixed; boundary=" + BOUNDARY;
-    BatchRequestParser parser = new BatchRequestParser(contentType, parseProperties);
-    List<BatchRequestPart> parseResult = parser.parse(batchRequestStream.asStream());
+    BatchParser parser = new BatchParser(contentType, parseProperties, true);
+    List<BatchRequestPart> parseResult = parser.parseBatchRequest(batchRequestStream.asStream());
     assertEquals(1, parseResult.size());
   }
 
@@ -121,11 +122,11 @@ public class BatchRequestTest {
     assertTrue(requestBody.contains("--changeset_"));
     assertTrue(requestBody.contains("PUT Employees('2') HTTP/1.1"));
     assertTrue(requestBody.contains("{\"Возраст\":40}"));
-    assertEquals(16, batchRequestStream.linesCount());
+    assertEquals(15, batchRequestStream.linesCount());
 
     String contentType = "multipart/mixed; boundary=" + BOUNDARY;
-    BatchRequestParser parser = new BatchRequestParser(contentType, parseProperties);
-    List<BatchRequestPart> parseResult = parser.parse(batchRequestStream.asStream());
+    BatchParser parser = new BatchParser(contentType, parseProperties, true);
+    List<BatchRequestPart> parseResult = parser.parseBatchRequest(batchRequestStream.asStream());
     assertEquals(1, parseResult.size());
   }
 
@@ -152,7 +153,6 @@ public class BatchRequestTest {
     BatchRequestWriter writer = new BatchRequestWriter();
     InputStream batchRequest = writer.writeBatchRequest(batch, BOUNDARY);
     assertNotNull(batchRequest);
-
     StringHelper.Stream batchRequestStream = StringHelper.toStream(batchRequest);
     String requestBody = batchRequestStream.asString();
     checkMimeHeaders(requestBody);
@@ -162,14 +162,14 @@ public class BatchRequestTest {
     assertTrue(requestBody.contains("GET Employees HTTP/1.1"));
     assertTrue(requestBody.contains("POST Employees HTTP/1.1"));
     assertTrue(requestBody.contains(body));
-    assertEquals(23, batchRequestStream.linesCount());
+    assertEquals(24, batchRequestStream.linesCount());
 
     String contentType = "multipart/mixed; boundary=" + BOUNDARY;
-    BatchRequestParser parser = new BatchRequestParser(contentType, parseProperties);
-    List<BatchRequestPart> parseResult = parser.parse(batchRequestStream.asStream());
+    BatchParser parser = new BatchParser(contentType, parseProperties, true);
+    List<BatchRequestPart> parseResult = parser.parseBatchRequest(batchRequestStream.asStream());
     assertEquals(2, parseResult.size());
   }
-
+  
   @Test
   public void testChangeSetWithContentIdReferencing() throws BatchException, IOException {
     List<BatchPart> batch = new ArrayList<BatchPart>();
@@ -212,8 +212,8 @@ public class BatchRequestTest {
     assertTrue(requestBody.contains(body));
 
     String contentType = "multipart/mixed; boundary=" + BOUNDARY;
-    BatchRequestParser parser = new BatchRequestParser(contentType, parseProperties);
-    List<BatchRequestPart> parseResult = parser.parse(batchRequestStream.asStream());
+    BatchParser parser = new BatchParser(contentType, parseProperties, true);
+    List<BatchRequestPart> parseResult = parser.parseBatchRequest(batchRequestStream.asStream());
     assertEquals(1, parseResult.size());
   }
 
@@ -227,6 +227,7 @@ public class BatchRequestTest {
     String body = "/9j/4AAQSkZJRgABAQEBLAEsAAD/4RM0RXhpZgAATU0AKgAAAAgABwESAAMAAAABAAEA";
     BatchChangeSetPart changeRequest = BatchChangeSetPart.method(POST)
         .uri("Employees")
+        .contentId("111request")
         .body(body)
         .headers(changeSetHeaders)
         .build();
@@ -239,6 +240,7 @@ public class BatchRequestTest {
     changeSetHeaders2.put("Content-ID", "222");
     BatchChangeSetPart changeRequest2 = BatchChangeSetPart.method(PUT)
         .uri("Employees('2')/ManagerId")
+        .contentId("222request")
         .body("{\"ManagerId\":1}")
         .headers(changeSetHeaders2)
         .build();
@@ -260,8 +262,8 @@ public class BatchRequestTest {
     assertTrue(requestBody.contains(body));
 
     String contentType = "multipart/mixed; boundary=" + BOUNDARY;
-    BatchRequestParser parser = new BatchRequestParser(contentType, parseProperties);
-    List<BatchRequestPart> parseResult = parser.parse(batchRequestStream.asStream());
+    BatchParser parser = new BatchParser(contentType, parseProperties, true);
+    List<BatchRequestPart> parseResult = parser.parseBatchRequest(batchRequestStream.asStream());
     assertEquals(2, parseResult.size());
   }
 

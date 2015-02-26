@@ -22,10 +22,12 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.apache.olingo.odata2.api.edm.EdmException;
 import org.apache.olingo.odata2.api.edm.EdmLiteralKind;
+import org.apache.olingo.odata2.api.edm.EdmMappable;
 import org.apache.olingo.odata2.api.edm.EdmMapping;
 import org.apache.olingo.odata2.api.edm.EdmProperty;
 import org.apache.olingo.odata2.api.edm.EdmSimpleType;
@@ -61,7 +63,7 @@ import org.apache.olingo.odata2.jpa.processor.api.jpql.JPQLStatement;
 public class ODataExpressionParser {
 
   public static final String EMPTY = ""; //$NON-NLS-1$
-  public static Integer methodFlag = 0;
+  public static final ThreadLocal<Integer> methodFlag = new ThreadLocal<Integer>();
 
   /**
    * This method returns the parsed where condition corresponding to the filter input in the user query.
@@ -81,7 +83,8 @@ public class ODataExpressionParser {
 
       switch (unaryExpression.getOperator()) {
       case NOT:
-        return JPQLStatement.Operator.NOT + "(" + operand + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+        return JPQLStatement.Operator.NOT + JPQLStatement.DELIMITER.PARENTHESIS_LEFT + operand
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT; //$NON-NLS-1$ //$NON-NLS-2$
       case MINUS:
         if (operand.startsWith("-")) {
           return operand.substring(1);
@@ -96,38 +99,72 @@ public class ODataExpressionParser {
       return parseToJPAWhereExpression(((FilterExpression) whereExpression).getExpression(), tableAlias);
     case BINARY:
       final BinaryExpression binaryExpression = (BinaryExpression) whereExpression;
-      if ((binaryExpression.getLeftOperand().getKind() == ExpressionKind.METHOD)
-          && ((binaryExpression.getOperator() == BinaryOperator.EQ) ||
-          (binaryExpression.getOperator() == BinaryOperator.NE))
-          && (((MethodExpression) binaryExpression.getLeftOperand()).getMethod() == MethodOperator.SUBSTRINGOF)) {
-        methodFlag = 1;
+      MethodOperator operator = null;
+      if (binaryExpression.getLeftOperand().getKind() == ExpressionKind.METHOD) {
+        operator = ((MethodExpression) binaryExpression.getLeftOperand()).getMethod();
+      }
+      if (operator != null && ((binaryExpression.getOperator() == BinaryOperator.EQ) ||
+          (binaryExpression.getOperator() == BinaryOperator.NE))) {
+        if (operator == MethodOperator.SUBSTRINGOF) {
+          methodFlag.set(1);
+        }
       }
       final String left = parseToJPAWhereExpression(binaryExpression.getLeftOperand(), tableAlias);
       final String right = parseToJPAWhereExpression(binaryExpression.getRightOperand(), tableAlias);
 
+      // Special handling for STARTSWITH and ENDSWITH method expression
+      if (operator != null && (operator == MethodOperator.STARTSWITH || operator == MethodOperator.ENDSWITH)) {
+        if (!binaryExpression.getOperator().equals(BinaryOperator.EQ)) {
+          throw ODataJPARuntimeException.throwException(ODataJPARuntimeException.OPERATOR_EQ_NE_MISSING
+              .addContent(binaryExpression.getOperator().toString()), null);
+        } else if (right.equals("false")) {
+          return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left.replaceFirst("LIKE", "NOT LIKE")
+              + JPQLStatement.DELIMITER.SPACE
+              + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
+        } else {
+          return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left
+              + JPQLStatement.DELIMITER.SPACE
+              + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
+        }
+      }
       switch (binaryExpression.getOperator()) {
       case AND:
-        return "(" + left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.AND + JPQLStatement.DELIMITER.SPACE
-            + right + ")";
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.AND + JPQLStatement.DELIMITER.SPACE
+            + right + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case OR:
-        return "(" + left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.OR + JPQLStatement.DELIMITER.SPACE
-            + right + ")";
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.OR + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case EQ:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.EQ + JPQLStatement.DELIMITER.SPACE + right;
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.EQ + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case NE:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.NE + JPQLStatement.DELIMITER.SPACE + right;
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.NE + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case LT:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.LT + JPQLStatement.DELIMITER.SPACE + right;
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.LT + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case LE:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.LE + JPQLStatement.DELIMITER.SPACE + right;
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.LE + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case GT:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.GT + JPQLStatement.DELIMITER.SPACE + right;
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.GT + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case GE:
-        return left + JPQLStatement.DELIMITER.SPACE + JPQLStatement.Operator.GE + JPQLStatement.DELIMITER.SPACE + right;
+        return JPQLStatement.DELIMITER.PARENTHESIS_LEFT + left + JPQLStatement.DELIMITER.SPACE
+            + JPQLStatement.Operator.GE + JPQLStatement.DELIMITER.SPACE + right
+            + JPQLStatement.DELIMITER.PARENTHESIS_RIGHT;
       case PROPERTY_ACCESS:
         throw new ODataNotImplementedException();
       default:
         throw new ODataNotImplementedException();
+
       }
 
     case PROPERTY:
@@ -168,7 +205,7 @@ public class ODataExpressionParser {
     case METHOD:
       final MethodExpression methodExpression = (MethodExpression) whereExpression;
       String first = parseToJPAWhereExpression(methodExpression.getParameters().get(0), tableAlias);
-      final String second =
+      String second =
           methodExpression.getParameterCount() > 1 ? parseToJPAWhereExpression(methodExpression.getParameters().get(1),
               tableAlias) : null;
       String third =
@@ -181,14 +218,20 @@ public class ODataExpressionParser {
         return String.format("SUBSTRING(%s, %s + 1 %s)", first, second, third);
       case SUBSTRINGOF:
         first = first.substring(1, first.length() - 1);
-        if (methodFlag == 1) {
-          methodFlag = 0;
+        if (methodFlag.get() == 1) {
+          methodFlag.set(0);
           return String.format("(CASE WHEN (%s LIKE '%%%s%%') THEN TRUE ELSE FALSE END)", second, first);
         } else {
           return String.format("(CASE WHEN (%s LIKE '%%%s%%') THEN TRUE ELSE FALSE END) = true", second, first);
         }
       case TOLOWER:
         return String.format("LOWER(%s)", first);
+      case STARTSWITH:
+        second = second.substring(1, second.length() - 1);
+        return String.format("%s LIKE '%s%%'", first, second);
+      case ENDSWITH:
+        second = second.substring(1, second.length() - 1);
+        return String.format("%s LIKE '%%%s'", first, second);
       default:
         throw new ODataNotImplementedException();
       }
@@ -300,6 +343,26 @@ public class ODataExpressionParser {
     }
   }
 
+  public static HashMap<String, String> parseKeyPropertiesToJPAOrderByExpression(
+      final List<EdmProperty> edmPropertylist, final String tableAlias) throws ODataJPARuntimeException {
+    LinkedHashMap<String, String> orderByMap = new LinkedHashMap<String, String>();
+    String propertyName = null;
+    for (EdmProperty edmProperty : edmPropertylist) {
+      try {
+        EdmMapping mapping = edmProperty.getMapping();
+        if (mapping != null && mapping.getInternalName() != null) {
+          propertyName = mapping.getInternalName();// For embedded/complex keys
+        } else {
+          propertyName = edmProperty.getName();
+        }
+      } catch (EdmException e) {
+        throw ODataJPARuntimeException.throwException(ODataJPARuntimeException.GENERAL.addContent(e.getMessage()), e);
+      }
+      orderByMap.put(tableAlias + JPQLStatement.DELIMITER.PERIOD + propertyName, EMPTY);
+    }
+    return orderByMap;
+  }
+
   /**
    * This method evaluates the expression based on the type instance. Used for adding escape characters where necessary.
    * 
@@ -313,6 +376,7 @@ public class ODataExpressionParser {
 
     if (edmSimpleType == EdmSimpleTypeKind.String.getEdmSimpleTypeInstance()
         || edmSimpleType == EdmSimpleTypeKind.Guid.getEdmSimpleTypeInstance()) {
+      value = value.replaceAll("'", "''");
       value = "\'" + value + "\'"; //$NON-NLS-1$	//$NON-NLS-2$
     } else if (edmSimpleType == EdmSimpleTypeKind.DateTime.getEdmSimpleTypeInstance()
         || edmSimpleType == EdmSimpleTypeKind.DateTimeOffset.getEdmSimpleTypeInstance()) {
@@ -357,26 +421,6 @@ public class ODataExpressionParser {
       value = value + JPQLStatement.DELIMITER.LONG; //$NON-NLS-1$
     }
     return value;
-  }
-
-  public static HashMap<String, String> parseKeyPropertiesToJPAOrderByExpression(
-      final List<EdmProperty> edmPropertylist, final String tableAlias) throws ODataJPARuntimeException {
-    HashMap<String, String> orderByMap = new HashMap<String, String>();
-    String propertyName = null;
-    for (EdmProperty edmProperty : edmPropertylist) {
-      try {
-        EdmMapping mapping = edmProperty.getMapping();
-        if (mapping != null && mapping.getInternalName() != null) {
-          propertyName = mapping.getInternalName();// For embedded/complex keys
-        } else {
-          propertyName = edmProperty.getName();
-        }
-      } catch (EdmException e) {
-        throw ODataJPARuntimeException.throwException(ODataJPARuntimeException.GENERAL.addContent(e.getMessage()), e);
-      }
-      orderByMap.put(tableAlias + JPQLStatement.DELIMITER.PERIOD + propertyName, EMPTY);
-    }
-    return orderByMap;
   }
 
 }

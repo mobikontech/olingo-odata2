@@ -267,9 +267,12 @@ public final class ODataJPAResponseBuilderDefault implements ODataJPAResponseBui
 
       if (result != null) {
         ODataResponse response = null;
-
-        final String value = type.valueToString(result, EdmLiteralKind.DEFAULT, null);
-        response = EntityProvider.writeText(value);
+        if (type.getDefaultType().equals(byte[].class)) {
+          response = EntityProvider.writeBinary("application/octet-stream", (byte[]) result);
+        } else {
+          final String value = type.valueToString(result, EdmLiteralKind.DEFAULT, null);
+          response = EntityProvider.writeText(value);
+        }
 
         return ODataResponse.fromResponse(response).build();
       } else {
@@ -563,7 +566,9 @@ public final class ODataJPAResponseBuilderDefault implements ODataJPAResponseBui
           edmEntityList.subList(0, resultsView.getSkip()).clear();
         }
         if (resultsView.getTop() != null && resultsView.getTop() >= 0 && resultsView.getTop() < edmEntityList.size()) {
-          edmEntityList.retainAll(edmEntityList.subList(0, resultsView.getTop()));
+          final List<Map<String, Object>> edmEntitySubList =
+              new ArrayList<Map<String, Object>>(edmEntityList.subList(0, resultsView.getTop()));
+          edmEntityList.retainAll(edmEntitySubList);
         }
       }
     }// Inlinecount of None is handled by default - null

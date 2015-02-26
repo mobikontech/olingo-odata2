@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -91,17 +92,50 @@ public class RestUtil {
     Map<String, String> queryParametersMap = new HashMap<String, String>();
     if (queryString != null) {
       // At first the queryString will be decoded.
-      List<String> queryParameters = Arrays.asList(Decoder.decode(queryString).split("\\&"));
+      List<String> queryParameters = Arrays.asList(queryString.split("\\&"));
       for (String param : queryParameters) {
-        int indexOfEqualSign = param.indexOf("=");
+        String decodedParam = Decoder.decode(param);
+        int indexOfEqualSign = decodedParam.indexOf("=");
         if (indexOfEqualSign < 0) {
-          queryParametersMap.put(param, "");
+          queryParametersMap.put(decodedParam, "");
         } else {
-          queryParametersMap.put(param.substring(0, indexOfEqualSign), param.substring(indexOfEqualSign + 1));
+          queryParametersMap.put(decodedParam.substring(0, indexOfEqualSign), decodedParam
+              .substring(indexOfEqualSign + 1));
         }
       }
     }
     return queryParametersMap;
+  }
+
+  public static Map<String, List<String>> extractAllQueryParameters(final String queryString) {
+    Map<String, List<String>> allQueryParameterMap = new HashMap<String, List<String>>();
+
+    if (queryString != null) {
+      // At first the queryString will be decoded.
+      List<String> queryParameters = Arrays.asList(queryString.split("\\&"));
+      for (String param : queryParameters) {
+        String decodedParam = Decoder.decode(param);
+        int indexOfEqualSign = decodedParam.indexOf("=");
+
+        if (indexOfEqualSign < 0) {
+          final List<String> parameterList =
+              allQueryParameterMap.containsKey(decodedParam) ? allQueryParameterMap.get(decodedParam)
+                  : new LinkedList<String>();
+          allQueryParameterMap.put(decodedParam, parameterList);
+
+          parameterList.add("");
+        } else {
+          final String key = decodedParam.substring(0, indexOfEqualSign);
+          final List<String> parameterList = allQueryParameterMap.containsKey(key) ? allQueryParameterMap.get(key)
+              : new LinkedList<String>();
+
+          allQueryParameterMap.put(key, parameterList);
+          parameterList.add(decodedParam.substring(indexOfEqualSign + 1));
+        }
+      }
+    }
+
+    return allQueryParameterMap;
   }
 
   /*
@@ -243,7 +277,14 @@ public class RestUtil {
     while (pathInfoString.startsWith("/")) {
       pathInfoString = pathInfoString.substring(1);
     }
-    List<String> segments = Arrays.asList(pathInfoString.split("/", -1));
+    List<String> segments = null;
+    // EmptyStrings have to result in an empty list.
+    // Since split will always deliver an empty string back we have to do this manually
+    if (pathInfoString.isEmpty()) {
+      segments = new ArrayList<String>();
+    } else {
+      segments = Arrays.asList(pathInfoString.split("/", -1));
+    }
 
     if (pathSplit == 0) {
       precedingPathSegments = Collections.emptyList();
@@ -326,7 +367,7 @@ public class RestUtil {
     }
 
     int indexServletPath = requestUri.indexOf(servletRequest.getServletPath());
-    if (indexServletPath > 0) {
+    if (indexServletPath >= 0) {
       pathInfoString = pathInfoString.substring(servletRequest.getServletPath().length());
     }
     return pathInfoString;

@@ -79,11 +79,17 @@ public class JPAExpandCallBack implements OnWriteFeedContent, OnWriteEntryConten
       result.setEntryData(edmPropertyValueMap);
       navigationLinks = context.getCurrentExpandSelectTreeNode().getLinks();
       if (navigationLinks.size() > 0) {
-          EdmEntityType entityType = context.getSourceEntitySet().getEntityType();
-          currentNavPropertyList = getNextNavigationProperties(entityType, context.getNavigationProperty());
+        currentNavPropertyList = new ArrayList<EdmNavigationProperty>();
+        List<EdmNavigationProperty> nextNavProperty =
+            getNextNavigationProperty(context.getSourceEntitySet().getEntityType(), context.getNavigationProperty());
+        if (nextNavProperty != null) {
+          currentNavPropertyList.addAll(nextNavProperty);
+        }
         HashMap<String, Object> navigationMap =
             jpaResultParser.parse2EdmNavigationValueMap(inlinedEntry, currentNavPropertyList);
-        edmPropertyValueMap.putAll(navigationMap);
+        if (edmPropertyValueMap != null) {
+          edmPropertyValueMap.putAll(navigationMap);
+        }
         result.setEntryData(edmPropertyValueMap);
       }
       result.setInlineProperties(getInlineEntityProviderProperties(context));
@@ -153,8 +159,12 @@ public class JPAExpandCallBack implements OnWriteFeedContent, OnWriteEntryConten
       result.setFeedData(edmEntityList);
 
       if (currentExpandTreeNode.getLinks().size() > 0) {
-          EdmEntityType entityType = context.getSourceEntitySet().getEntityType();
-          currentNavPropertyList = getNextNavigationProperties(entityType, context.getNavigationProperty());
+        currentNavPropertyList = new ArrayList<EdmNavigationProperty>();
+        List<EdmNavigationProperty> nextNavPropertyList =
+            getNextNavigationProperty(context.getSourceEntitySet().getEntityType(), context.getNavigationProperty());
+        if (nextNavPropertyList != null) {
+          currentNavPropertyList.addAll(nextNavPropertyList);
+        }
         int count = 0;
         for (Object object : listOfItems) {
           HashMap<String, Object> navigationMap =
@@ -173,10 +183,9 @@ public class JPAExpandCallBack implements OnWriteFeedContent, OnWriteEntryConten
     return result;
   }
 
-  private List<EdmNavigationProperty> getNextNavigationProperties(final EdmEntityType sourceEntityType,
+  private List<EdmNavigationProperty> getNextNavigationProperty(final EdmEntityType sourceEntityType,
       final EdmNavigationProperty navigationProperty) throws EdmException {
-
-    ArrayList<EdmNavigationProperty> navProps = new ArrayList<EdmNavigationProperty>();
+    final List<EdmNavigationProperty> edmNavigationPropertyList = new ArrayList<EdmNavigationProperty>();
     for (ArrayList<NavigationPropertySegment> navPropSegments : expandList) {
       int size = navPropSegments.size();
       for (int i = 0; i < size; i++) {
@@ -184,12 +193,12 @@ public class JPAExpandCallBack implements OnWriteFeedContent, OnWriteEntryConten
         if (navProperty.getFromRole().equalsIgnoreCase(sourceEntityType.getName())
             && navProperty.getName().equals(navigationProperty.getName())) {
           if (i < size - 1) {
-            navProps.add(navPropSegments.get(i + 1).getNavigationProperty());
+            edmNavigationPropertyList.add(navPropSegments.get(i + 1).getNavigationProperty());
           }
         }
       }
     }
-    return navProps;
+    return edmNavigationPropertyList;
   }
 
   public static <T> Map<String, ODataCallback> getCallbacks(final URI baseUri,

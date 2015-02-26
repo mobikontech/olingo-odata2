@@ -92,7 +92,7 @@ public class XmlMetadataConsumer {
 
       while (reader.hasNext()
           && !(reader.isEndElement() && Edm.NAMESPACE_EDMX_2007_06.equals(reader.getNamespaceURI())
-          && XmlMetadataConstants.EDM_DATA_SERVICES.equals(reader.getLocalName()))) {
+          && XmlMetadataConstants.EDMX_TAG.equals(reader.getLocalName()))) {
         reader.next();
         if (reader.isStartElement()) {
           extractNamespaces(reader);
@@ -106,6 +106,12 @@ public class XmlMetadataConsumer {
           }
         }
       }
+
+      if (!reader.isEndElement() || !XmlMetadataConstants.EDMX_TAG.equals(reader.getLocalName())) {
+        throw new EntityProviderException(EntityProviderException.MISSING_TAG
+            .addContent(XmlMetadataConstants.EDMX_TAG));
+      }
+
       if (validate) {
         validate();
       }
@@ -864,17 +870,32 @@ public class XmlMetadataConsumer {
     if (!annotationAttributes.isEmpty()) {
       aElement.setAttributes(annotationAttributes);
     }
-    while (reader.hasNext() && !(reader.isEndElement() && aElement.getName() != null
-        && aElement.getName().equals(reader.getLocalName()))) {
+
+    boolean justRead = false;
+    if (reader.hasNext()) {
       reader.next();
+      justRead = true;
+    }
+
+    while (justRead && !(reader.isEndElement() && aElement.getName() != null
+        && aElement.getName().equals(reader.getLocalName()))) {
+      justRead = false;
       if (reader.isStartElement()) {
         annotationElements.add(readAnnotationElement(reader));
+        if (reader.hasNext()) {
+          reader.next();
+          justRead = true;
+        }
       } else if (reader.isCharacters()) {
         String elementText = "";
         do {
+          justRead = false;
           elementText = elementText + reader.getText();
-          reader.next();
-        } while (reader.isCharacters());
+          if (reader.hasNext()) {
+            reader.next();
+            justRead = true;
+          }
+        } while (justRead && reader.isCharacters());
         aElement.setText(elementText);
       }
     }

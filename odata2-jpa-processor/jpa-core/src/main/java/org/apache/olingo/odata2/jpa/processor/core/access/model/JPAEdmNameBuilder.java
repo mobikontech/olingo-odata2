@@ -143,13 +143,20 @@ public class JPAEdmNameBuilder {
                 jpaAttributeName);
       }
     }
+    if (isForeignKey == true) {
+      joinColumnNames = view.getJPAJoinColumns().get(view.getJPAJoinColumns().size() - 1);
+    }
+
     if (skipDefaultNaming == false && propertyName == null) {
       propertyName = Character.toUpperCase(jpaAttributeName.charAt(0)) + jpaAttributeName.substring(1);
     } else if (propertyName == null) {
       propertyName = jpaAttributeName;
-      if (isForeignKey == true) {
-        joinColumnNames = view.getJPAJoinColumns().get(view.getJPAJoinColumns().size() - 1);
-        propertyName = FK_PREFIX + UNDERSCORE + joinColumnNames[0];
+      if (isForeignKey) {
+        propertyName = mappingModelAccess.mapJPAAttribute(view.getJPAEdmEntityTypeView().getJPAEntityType().getName(),
+            joinColumnNames[0]);
+        if (propertyName == null) {
+          propertyName = FK_PREFIX + UNDERSCORE + joinColumnNames[0];
+        }
       }
     }
 
@@ -163,11 +170,13 @@ public class JPAEdmNameBuilder {
       Column column = annotatedElement.getAnnotation(Column.class);
       if (column != null) {
         mapping.setJPAColumnName(column.name());
+      } else if (joinColumnNames != null) {
+        mapping.setJPAColumnName(joinColumnNames[0]);
       } else {
-        if (joinColumnNames != null) {
-          mapping.setJPAColumnName(joinColumnNames[0]);
-          jpaAttributeName += "." + view.getJPAReferencedAttribute().getName();
-        }
+        mapping.setJPAColumnName(jpaAttributeName);
+      }
+      if (isForeignKey) {
+        jpaAttributeName += "." + view.getJPAReferencedAttribute().getName();
       }
     } else {
       ManagedType<?> managedType = jpaAttribute.getDeclaringType();
@@ -374,19 +383,6 @@ public class JPAEdmNameBuilder {
 
   }
 
-  private static String buildNamespace(final JPAEdmBaseView view) {
-    JPAEdmMappingModelAccess mappingModelAccess = view.getJPAEdmMappingModelAccess();
-    String namespace = null;
-    if (mappingModelAccess != null && mappingModelAccess.isMappingModelExists()) {
-      namespace = mappingModelAccess.mapJPAPersistenceUnit(view.getpUnitName());
-    }
-    if (namespace == null) {
-      namespace = view.getpUnitName();
-    }
-
-    return namespace;
-  }
-
   /*
    * ************************************************************************
    * EDM Association Name - RULES
@@ -403,16 +399,23 @@ public class JPAEdmNameBuilder {
     String end1Name = association.getEnd1().getType().getName();
     String end2Name = association.getEnd2().getType().getName();
 
-    if (end1Name.compareToIgnoreCase(end2Name) > 0) {
-      associationName = end2Name + UNDERSCORE + end1Name;
-    } else {
+    if (end1Name.equals(end2Name)) {
       associationName = end1Name + UNDERSCORE + end2Name;
+      associationName =
+          associationName + UNDERSCORE + multiplicityToString(association.getEnd1().getMultiplicity()) + UNDERSCORE
+              + multiplicityToString(association.getEnd2().getMultiplicity()) + Integer.toString(count);
+    } else {
+      if (end1Name.compareToIgnoreCase(end2Name) > 0) {
+        associationName = end2Name + UNDERSCORE + end1Name;
+      } else {
+        associationName = end1Name + UNDERSCORE + end2Name;
+      }
+      if (count >= 1) {
+        associationName = associationName + Integer.toString(count - 1);
+      }
     }
-    if (count > 1) {
-      associationName = associationName + Integer.toString(count - 1);
-    }
-    association.setName(associationName);
 
+    association.setName(associationName);
   }
 
   /*
@@ -498,14 +501,25 @@ public class JPAEdmNameBuilder {
 
     navProp.setName(navPropName);
 
-    if (toName.equals(fromName)) {
-        if (jpaAttribute.isCollection() == (association.getEnd1().getMultiplicity() == EdmMultiplicity.MANY)) {
-            navProp.setFromRole(association.getEnd2().getRole());
-            navProp.setToRole(association.getEnd1().getRole());
+    // Condition for self join
+    if (associationEndTypeOne.getName().equals(associationEndTypeTwo.getName())) {
+      if (jpaAttribute.isCollection()) {
+        if (association.getEnd2().getMultiplicity().equals(EdmMultiplicity.MANY)) {
+          navProp.setToRole(association.getEnd2().getRole());
+          navProp.setFromRole(association.getEnd1().getRole());
         } else {
-            navProp.setToRole(association.getEnd2().getRole());
-            navProp.setFromRole(association.getEnd1().getRole());
+          navProp.setToRole(association.getEnd1().getRole());
+          navProp.setFromRole(association.getEnd2().getRole());
         }
+      } else {
+        if (association.getEnd2().getMultiplicity().equals(EdmMultiplicity.ONE)) {
+          navProp.setToRole(association.getEnd2().getRole());
+          navProp.setFromRole(association.getEnd1().getRole());
+        } else {
+          navProp.setToRole(association.getEnd1().getRole());
+          navProp.setFromRole(association.getEnd2().getRole());
+        }
+      }
     } else if (toName.equals(associationEndTypeOne.getName())) {
       navProp.setFromRole(association.getEnd2().getRole());
       navProp.setToRole(association.getEnd1().getRole());
@@ -514,6 +528,33 @@ public class JPAEdmNameBuilder {
       navProp.setToRole(association.getEnd2().getRole());
       navProp.setFromRole(association.getEnd1().getRole());
     }
+  }
+
+  private static String multiplicityToString(EdmMultiplicity multiplicity) {
+    switch (multiplicity) {
+    case MANY:
+      return "Many";
+    case ONE:
+      return "One";
+    case ZERO_TO_ONE:
+      return "ZeroToOne";
+    default:
+      break;
+    }
+    return "";
+  }
+
+  private static String buildNamespace(final JPAEdmBaseView view) {
+    JPAEdmMappingModelAccess mappingModelAccess = view.getJPAEdmMappingModelAccess();
+    String namespace = null;
+    if (mappingModelAccess != null && mappingModelAccess.isMappingModelExists()) {
+      namespace = mappingModelAccess.mapJPAPersistenceUnit(view.getpUnitName());
+    }
+    if (namespace == null) {
+      namespace = view.getpUnitName();
+    }
+
+    return namespace;
   }
 
 }

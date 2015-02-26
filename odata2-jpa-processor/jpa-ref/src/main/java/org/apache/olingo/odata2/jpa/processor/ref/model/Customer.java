@@ -26,13 +26,15 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 @Entity
 @Table(name = "T_CUSTOMER")
-public class Customer {
+public class Customer extends CustomerBase {
 
   @Id
   @Column(name = "ID")
@@ -40,6 +42,10 @@ public class Customer {
 
   @Column(name = "NAME")
   private String name;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "IMPORTANCE")
+  private Importance importance;
 
   @Embedded
   private Address address;
@@ -49,6 +55,14 @@ public class Customer {
 
   @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
   private List<SalesOrderHeader> orders = new ArrayList<SalesOrderHeader>();
+
+  public List<SalesOrderHeader> getOrders() {
+    return orders;
+  }
+
+  public void setOrders(List<SalesOrderHeader> orders) {
+    this.orders = orders;
+  }
 
   public Long getId() {
     return id;
@@ -66,12 +80,12 @@ public class Customer {
     this.name = name;
   }
 
-  public List<SalesOrderHeader> getOrders() {
-    return orders;
+  public Importance getImportance() {
+    return importance;
   }
 
-  public void setOrders(final List<SalesOrderHeader> orders) {
-    this.orders = orders;
+  public void setImportance(Importance importance) {
+    this.importance = importance;
   }
 
   public Address getAddress() {

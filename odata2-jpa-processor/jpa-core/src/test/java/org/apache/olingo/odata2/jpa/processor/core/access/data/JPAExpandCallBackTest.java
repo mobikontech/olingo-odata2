@@ -112,6 +112,7 @@ public class JPAExpandCallBackTest {
 
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testGetNextNavigationProperty() {
     JPAExpandCallBack callBack = getJPAExpandCallBackObject();

@@ -82,16 +82,12 @@ public class JPAEdmAssociationEnd extends JPAEdmBaseViewImpl implements JPAEdmAs
 
       JPAEdmNameBuilder.build(JPAEdmAssociationEnd.this, entityTypeView, propertyView);
 
-      String end1Role = currentAssociationEnd1.getType().getName();
-      String end2Role = currentAssociationEnd2.getType().getName();
-
-      if (end1Role.equals(end2Role)) {
-        end1Role = end1Role + "1";
-        end2Role = end2Role + "2";
+      currentAssociationEnd1.setRole(currentAssociationEnd1.getType().getName());
+      if (currentAssociationEnd1.getType().getName().equals(currentAssociationEnd2.getType().getName())) {
+        currentAssociationEnd2.setRole(currentAssociationEnd2.getType().getName() + "2");
+      } else {
+        currentAssociationEnd2.setRole(currentAssociationEnd2.getType().getName());
       }
-
-      currentAssociationEnd1.setRole(end1Role);
-      currentAssociationEnd2.setRole(end2Role);
 
       setEdmMultiplicity(propertyView.getJPAAttribute().getPersistentAttributeType());
 

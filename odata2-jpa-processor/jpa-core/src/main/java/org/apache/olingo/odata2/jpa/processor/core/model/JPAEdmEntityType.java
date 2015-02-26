@@ -113,15 +113,13 @@ public class JPAEdmEntityType extends JPAEdmBaseViewImpl implements JPAEdmEntity
         JPAEdmMapping jpaEdmMapping = (JPAEdmMapping) currentEdmEntityType.getMapping();
         EntityListeners entityListners = currentJPAEntityType.getJavaType().getAnnotation(EntityListeners.class);
         if (entityListners != null) {
-          for (Class entityListener : entityListners.value()) {
-              try {
-                  Class subClass = entityListener.asSubclass(ODataJPATombstoneEntityListener.class);
-                  jpaEdmMapping.setODataJPATombstoneEntityListener(subClass);
+          for (Class<EntityListeners> entityListner : entityListners.value()) {
+            if (ODataJPATombstoneEntityListener.class.isAssignableFrom(entityListner)) {
+              jpaEdmMapping
+                  .setODataJPATombstoneEntityListener((Class<? extends ODataJPATombstoneEntityListener>)
+                  (Object) entityListner);
               break;
-            } catch (ClassCastException e) {
-              continue;
             }
-
           }
         }
         JPAEdmPropertyView propertyView = new JPAEdmProperty(schemaView);
